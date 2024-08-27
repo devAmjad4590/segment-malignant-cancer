@@ -12,19 +12,22 @@ def segmentMalignantRegions(image):
     _, thresholded_image = cv2.threshold(enhanced_image, 77, 255, cv2.THRESH_BINARY)
 
     # Use morphological operations to refine the segmentation
-    kernel = np.ones((5, 5), np.uint8)
+    kernel = np.ones((3, 3), np.uint8)
     mask = cv2.morphologyEx(thresholded_image, cv2.MORPH_CLOSE, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
     # Post-Processing: Removing small regions
     num_labels, labels_im = cv2.connectedComponents(mask)
-    min_region_size = 1000  # Increase this value to remove more smaller regions
+    min_region_size = 5000  # Increase this value to remove more smaller regions
     for i in range(1, num_labels):
         if np.sum(labels_im == i) < min_region_size:
             mask[labels_im == i] = 0
 
     # Optional: Smoothing the boundaries of the mask
-    mask = cv2.GaussianBlur(mask, (3, 3), 0)
+    mask = cv2.GaussianBlur(mask, (5, 5), 0)
+
+    mask = cv2.bitwise_not(mask)
+
 
     # Ensure the mask is binary (0 and 1)
     mask = mask // 255
@@ -50,5 +53,5 @@ def segmentMalignantRegions(image):
     plt.show()
 
 # Read the image
-image = cv2.imread('./Dataset/malignant/malignant (26).png')
+image = cv2.imread('./Dataset/malignant/malignant (1).png')
 segmentMalignantRegions(image)
