@@ -18,22 +18,28 @@ def compute_metrics(pred_mask, true_mask):
     Returns:
         dict: A dictionary containing the metrics (ARE, Precision, Recall, IoU).
     """
-    true_mask = (true_mask > 0).astype(np.uint8)
+    true_mask = (true_mask > 0).astype(np.uint8)  # Ensure the ground truth mask is binary
 
-    # Flatten the masks to 1D for pixel-wise comparison
+    # Flatten the masks to 1D arrays for pixel-wise comparison
     pred_mask_flat = pred_mask.flatten()
     true_mask_flat = true_mask.flatten()
     
-    # Adapted Rand Error (ARE)
+    # Adapted Rand Error (ARE) calculation
     are = adjusted_rand_score(true_mask_flat, pred_mask_flat)    
-    # Precision and Recall
+    
+    # Precision and Recall calculation
     precision = precision_score(true_mask_flat, pred_mask_flat, average='binary')
     recall = recall_score(true_mask_flat, pred_mask_flat, average='binary')
     
-    # Intersection over Union (IoU)
+    # Intersection over Union (IoU) calculation
     iou = jaccard_score(true_mask_flat, pred_mask_flat, average='binary')
     
-    return {"ARE": are, "Precision": precision, "Recall": recall, "IoU": iou}
+    # Error calculation using F1 score-like formula
+    eps = 1e-10  # Small epsilon to avoid division by zero
+    error = 1 - ((2 * precision * recall) / (precision + recall + eps))
+    
+    # Return the metrics as a dictionary
+    return {"ARE": round(are, 4), "Error": round(error, 4), "Precision": round(precision, 4), "Recall": round(recall, 4), "IoU": round(iou, 4)}
 
 def evaluate_segmentation(images_dir, ground_truth_dir):
     """
@@ -46,20 +52,25 @@ def evaluate_segmentation(images_dir, ground_truth_dir):
     Returns:
         None
     """
+    # List and sort all image and ground truth files
     image_files = sorted(os.listdir(images_dir))
     ground_truth_files = sorted(os.listdir(ground_truth_dir))
     
+    # Initialize a table to display the results
     table = PrettyTable()
-    table.field_names = ["Image", "ARE", "Precision", "Recall", "IoU"]
+    table.field_names = ["Image", "ARE", "Error", "Precision", "Recall", "IoU"]
     
-    metrics_sum = {"ARE": 0, "Precision": 0, "Recall": 0, "IoU": 0}
+    # Initialize metrics sum for averaging later
+    metrics_sum = {"ARE": 0, "Error": 0, "Precision": 0, "Recall": 0, "IoU": 0}
     total_images = len(image_files)
     
+    # Initialize lists to store images and masks for display
     images = []
     pred_masks = []
     true_masks = []
     precisions = []
     
+    # Iterate over each image file
     for i, file_name in enumerate(image_files):
         print(images_dir, file_name)
         # Load the original image in grayscale mode
@@ -77,18 +88,18 @@ def evaluate_segmentation(images_dir, ground_truth_dir):
             print(f"Error: Failed to load ground truth mask from {os.path.join(ground_truth_dir, ground_truth_files[i])}")
             continue
         
-        # Binarize the true mask
+        # Binarize the ground truth mask
         _, true_mask = cv2.threshold(true_mask, 127, 1, cv2.THRESH_BINARY)
         
-        # Compute metrics
+        # Compute the metrics for the current image
         metrics = compute_metrics(pred_mask, true_mask)
         
-        # Accumulate metrics
+        # Accumulate the metrics for averaging
         for key in metrics:
             metrics_sum[key] += metrics[key]
         
-        # Add results to the table
-        table.add_row([file_name, metrics["ARE"], metrics["Precision"], metrics["Recall"], metrics["IoU"]])
+        # Add the results to the table
+        table.add_row([file_name, metrics["ARE"], metrics["Error"], metrics["Precision"], metrics["Recall"], metrics["IoU"]])
         
         # Store images and masks for later display
         images.append(image)
@@ -96,15 +107,15 @@ def evaluate_segmentation(images_dir, ground_truth_dir):
         true_masks.append(true_mask)
         precisions.append(metrics["Precision"])
     
-    # Calculate average metrics
-    avg_metrics = {key: metrics_sum[key] / total_images for key in metrics_sum}
-    table.add_row(["Average", avg_metrics["ARE"], avg_metrics["Precision"], avg_metrics["Recall"], avg_metrics["IoU"]])
+    # Calculate average metrics across all images
+    avg_metrics = {key: round(metrics_sum[key] / total_images, 4) for key in metrics_sum}
+    table.add_row(["Average", avg_metrics["ARE"], avg_metrics["Error"], avg_metrics["Precision"], avg_metrics["Recall"], avg_metrics["IoU"]])
     
-    # Print the results
+    # Print the detailed results
     print("#### DETAILED RESULTS ####")
     print(table)
     
-    # Display images and masks with navigation
+    # Display images and masks with navigation buttons
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
     plt.subplots_adjust(bottom=0.2)
     current_index = [0]
@@ -124,6 +135,7 @@ def evaluate_segmentation(images_dir, ground_truth_dir):
 
     display_image(current_index[0])
 
+    # Button to navigate to the next image
     ax_next = plt.axes([0.8, 0.05, 0.1, 0.075])
     btn_next = Button(ax_next, 'Next')
     btn_next.on_clicked(next_image)
@@ -133,9 +145,11 @@ def evaluate_segmentation(images_dir, ground_truth_dir):
 if __name__ == "__main__":
     import argparse
 
+    # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Evaluate segmentation results.")
     parser.add_argument("-i", "--images_dir", required=True, help="Directory of original images.")
     parser.add_argument("-g", "--ground_truth_dir", required=True, help="Directory of ground truth masks.")
     args = parser.parse_args()
 
+    # Evaluate segmentation based on provided directories
     evaluate_segmentation(args.images_dir, args.ground_truth_dir)

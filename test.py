@@ -5,14 +5,14 @@ from sklearn.metrics import precision_score, recall_score, jaccard_score, adjust
 import matplotlib.pyplot as plt
 
 def segment(image):
-    blurred_image = cv2.GaussianBlur(image, (5, 5), 0)  # Apply Gaussian Blur
-    clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(7, 7))  # Adjust clipLimit and tileGridSize as needed
+    blurred_image = cv2.GaussianBlur(image, (3, 3), 0)  # Apply Gaussian Blur
+    clahe = cv2.createCLAHE(clipLimit=9.0, tileGridSize=(1, 1))  # Adjust clipLimit and tileGridSize as needed
     enhanced_image = clahe.apply(blurred_image)  # Apply CLAHE
-    enhanced_image = cv2.dilate(enhanced_image, np.ones((3, 3), np.uint8), iterations=1)
-    thresholded_image = cv2.adaptiveThreshold(enhanced_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 797, 30)
+    thresholded_image = cv2.adaptiveThreshold(enhanced_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 601, 65)
 
     # Use morphological operations to refine the segmentation
     kernel = np.ones((5, 5), np.uint8)
+    
     mask = cv2.morphologyEx(thresholded_image, cv2.MORPH_CLOSE, kernel, iterations=1)
     # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
@@ -24,7 +24,7 @@ def segment(image):
     num_labels, labels = cv2.connectedComponents(mask, connectivity=8)
 
     # Optionally, filter out small components
-    min_size = 1000  # Minimum size of components to keep
+    min_size = 1300  # Minimum size of components to keep
     new_mask = np.zeros_like(mask)
     for label in range(1, num_labels):  # Start from 1 to ignore the background
         component = (labels == label)
