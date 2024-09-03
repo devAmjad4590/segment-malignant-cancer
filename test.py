@@ -8,30 +8,40 @@ def segment(image):
     blurred_image = cv2.GaussianBlur(image, (3, 3), 0)  # Apply Gaussian Blur
     clahe = cv2.createCLAHE(clipLimit=9.0, tileGridSize=(1, 1))  # Adjust clipLimit and tileGridSize as needed
     enhanced_image = clahe.apply(blurred_image)  # Apply CLAHE
-    thresholded_image = cv2.adaptiveThreshold(enhanced_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 601, 65)
+    thresholded_image = cv2.adaptiveThreshold(enhanced_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 801, 30)  # Apply adaptive thresholding
+    segmented_image = cv2.bitwise_and(image, image, mask=thresholded_image)  # Apply mask to original image
 
-    # Use morphological operations to refine the segmentation
-    kernel = np.ones((5, 5), np.uint8)
+    cv2.imshow("Original Image", image)
+    cv2.imshow("Enhanced Image", enhanced_image)
+    cv2.imshow("Segmented Image", segmented_image)
+    cv2.imshow("Thresholded Image", thresholded_image)
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    # thresholded_image = cv2.adaptiveThreshold(enhanced_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 601, 65)
+
+    # # Use morphological operations to refine the segmentation
+    # kernel = np.ones((5, 5), np.uint8)
     
-    mask = cv2.morphologyEx(thresholded_image, cv2.MORPH_CLOSE, kernel, iterations=1)
-    # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    # mask = cv2.morphologyEx(thresholded_image, cv2.MORPH_CLOSE, kernel, iterations=1)
+    # # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    mask = cv2.bitwise_not(mask)
+    # mask = cv2.bitwise_not(mask)
 
-    mask = mask // 255
+    # mask = mask // 255
 
-    # Connectivity analysis
-    num_labels, labels = cv2.connectedComponents(mask, connectivity=8)
+    # # Connectivity analysis
+    # num_labels, labels = cv2.connectedComponents(mask, connectivity=8)
 
-    # Optionally, filter out small components
-    min_size = 1300  # Minimum size of components to keep
-    new_mask = np.zeros_like(mask)
-    for label in range(1, num_labels):  # Start from 1 to ignore the background
-        component = (labels == label)
-        if np.sum(component) >= min_size:
-            new_mask[component] = 1
+    # # Optionally, filter out small components
+    # min_size = 1300  # Minimum size of components to keep
+    # new_mask = np.zeros_like(mask)
+    # for label in range(1, num_labels):  # Start from 1 to ignore the background
+    #     component = (labels == label)
+    #     if np.sum(component) >= min_size:
+    #         new_mask[component] = 1
     
-    return new_mask, enhanced_image
+    # return new_mask, enhanced_image
 
 def compute_metrics(pred_mask, true_mask):
     true_mask = (true_mask > 0).astype(np.uint8)
@@ -93,12 +103,14 @@ def evaluate_segmentation(image_path, ground_truth_path):
     ax[3].imshow(true_mask, cmap='gray')
     plt.show()
 
-if __name__ == "__main__":
-    import argparse
+# if __name__ == "__main__":
+#     import argparse
 
-    parser = argparse.ArgumentParser(description="Evaluate segmentation results.")
-    parser.add_argument("-i", "--image_path", required=True, help="Path to the original image.")
-    parser.add_argument("-g", "--ground_truth_path", required=True, help="Path to the ground truth mask.")
-    args = parser.parse_args()
+#     parser = argparse.ArgumentParser(description="Evaluate segmentation results.")
+#     parser.add_argument("-i", "--image_path", required=True, help="Path to the original image.")
+#     parser.add_argument("-g", "--ground_truth_path", required=True, help="Path to the ground truth mask.")
+#     args = parser.parse_args()
 
-    evaluate_segmentation(args.image_path, args.ground_truth_path)
+#     evaluate_segmentation(args.image_path, args.ground_truth_path)
+
+segment(cv2.imread('./Dataset/malignant/malignant (1).png', cv2.IMREAD_GRAYSCALE))
